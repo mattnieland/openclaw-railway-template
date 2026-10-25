@@ -13,7 +13,10 @@ import {
   describeGatewayHealth,
   isGatewayStartupReady,
 } from "./gateway-readiness.js";
-import { rebuildForwardedHeaders } from "./proxy-headers.js";
+import {
+  rebuildForwardedHeaders,
+  shouldInjectGatewayAuth,
+} from "./proxy-headers.js";
 
 const PORT = Number.parseInt(process.env.PORT ?? "8080", 10);
 const STATE_DIR =
@@ -1766,7 +1769,7 @@ const PROXY_ORIGIN = process.env.RAILWAY_PUBLIC_DOMAIN
   : GATEWAY_TARGET;
 
 proxy.on("proxyReq", (proxyReq, req, res) => {
-  if (!req.url?.startsWith("/hooks/")) {
+  if (shouldInjectGatewayAuth(req.url)) {
     proxyReq.setHeader("Authorization", `Bearer ${OPENCLAW_GATEWAY_TOKEN}`);
   }
   proxyReq.setHeader("Origin", PROXY_ORIGIN);

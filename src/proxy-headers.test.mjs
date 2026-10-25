@@ -1,7 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { rebuildForwardedHeaders } from "./proxy-headers.js";
+import {
+  rebuildForwardedHeaders,
+  shouldInjectGatewayAuth,
+} from "./proxy-headers.js";
 
 function proxyRequest(headers) {
   const values = new Map(
@@ -98,4 +101,25 @@ test("strips untrusted forwarding headers outside Railway", () => {
   );
 
   assert.deepEqual(Object.fromEntries(proxyReq.headers), {});
+});
+
+test("injects the gateway token for ordinary gateway paths", () => {
+  assert.equal(shouldInjectGatewayAuth("/"), true);
+  assert.equal(shouldInjectGatewayAuth("/openclaw?token=x"), true);
+  assert.equal(shouldInjectGatewayAuth("/v1/chat/completions"), true);
+  assert.equal(shouldInjectGatewayAuth(undefined), true);
+});
+
+test("leaves the caller's Authorization alone for webhook and A2A paths", () => {
+  assert.equal(shouldInjectGatewayAuth("/hooks/github"), false);
+  assert.equal(shouldInjectGatewayAuth("/a2a/v1"), false);
+  assert.equal(shouldInjectGatewayAuth("/a2a/v1?x=1"), false);
+  assert.equal(shouldInjectGatewayAuth("/.well-known/agent-card.json"), false);
+  assert.equal(shouldInjectGatewayAuth("/.well-known/agent.json"), false);
+});
+
+test("does not match look-alike prefixes", () => {
+  assert.equal(shouldInjectGatewayAuth("/a2a"), true);
+  assert.equal(shouldInjectGatewayAuth("/a2abc/v1"), true);
+  assert.equal(shouldInjectGatewayAuth("/hooks"), true);
 });
