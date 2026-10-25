@@ -583,7 +583,10 @@ function requireSetupAuth(req, res, next) {
 
 const app = express();
 app.disable("x-powered-by");
-app.use(express.json({ limit: "1mb" }));
+// Parse JSON only for the wrapper's own /setup routes. Everything else is
+// streamed to the gateway untouched; a global parser would consume the body
+// before http-proxy forwards it (A2A JSON-RPC, webhooks, OpenAI-style APIs).
+app.use("/setup", express.json({ limit: "1mb" }));
 
 app.get("/styles.css", (_req, res) => {
   res.sendFile(path.join(process.cwd(), "src", "public", "styles.css"));
